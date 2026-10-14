@@ -14,10 +14,11 @@
 --   Python decision ("lockstep"). That is what makes this usable for RL: the agent is never late.
 --
 -- THE SOCKET DIRECTION IS BACKWARDS FROM WHAT YOU'D EXPECT
---   MAME's Lua socket is a *server* (it listens on port 5000). Python is the *client* and connects.
+--   MAME's Lua socket is a *server* (it listens on port 57321). Python is the *client* and connects.
 
 local sock = emu.file("rwc")   -- MAME's generic file object; a "socket.host:port" name makes it a TCP socket
-assert(sock:open("socket.127.0.0.1:5000") == nil, "can't listen on :5000")  -- open() returns nil on success
+local socket_error = sock:open("socket.127.0.0.1:57321")  -- open() returns nil on success
+assert(socket_error == nil, "can't listen on :57321: " .. tostring(socket_error))
 
 local m = manager.machine      -- handle to the running emulated machine (ports, CPUs, video, ...)
 local mem = m.devices[":maincpu"].spaces["program"]  -- main CPU's memory, readable byte by byte

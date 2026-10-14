@@ -4,7 +4,7 @@ HOW TO RUN:  python test_bridge.py   (needs the galaga88 ROM in MAME's roms fold
 
 WHAT THIS DOES
   1. Launches MAME (the arcade emulator) with bridge.lua loaded inside it.
-  2. Connects to MAME over a local TCP socket (MAME is the server on port 5000, we are the client).
+  2. Connects to MAME over a local TCP socket (MAME is the server on port 57321, we are the client).
   3. Every game frame, MAME sends us a line of text; we answer with ONE BYTE saying which
      buttons to hold next frame. MAME waits for that byte, so game and script stay in lockstep.
   4. We play a fixed script: insert coin, press start, move right, then move left + fire.
@@ -28,11 +28,15 @@ SCRIPT = [(600, COIN), (610, 0), (700, START), (710, 0), (1100, RIGHT), (1300, L
 mame = subprocess.Popen([MAME + r"\mame.exe", "galaga88", "-window", "-nothrottle", "-sound", "none", "-skip_gameinfo",
                          "-autoboot_script", r"C:\Users\ellis\CSC410\bridge.lua"], cwd=MAME)
 
-# MAME listens on :5000 (emu.file socket is a server); connect as client.
+# MAME listens on :57321 (emu.file socket is a server); connect as client.
 # MAME takes a moment to start up, so retry for up to ~20 s until its socket is open.
+conn = None
 for _ in range(100):
-    try: conn = socket.create_connection(("127.0.0.1", 5000)); break
-    except OSError: time.sleep(0.2)
+    try: conn = socket.create_connection(("127.0.0.1", 57321)); break
+    except OSError:
+        if mame.poll() is not None: raise RuntimeError("MAME exited before the bridge connected; check its error above")
+        time.sleep(0.2)
+if conn is None: raise TimeoutError("MAME did not open the bridge socket on port 57321")
 f = conn.makefile("r")  # lets us read MAME's messages one line at a time
 
 # sent: the bitmask we sent last frame. seen: set of (sent, what MAME read back) pairs.
