@@ -23,6 +23,14 @@ assert(socket_error == nil, "can't listen on :57321: " .. tostring(socket_error)
 local m = manager.machine      -- handle to the running emulated machine (ports, CPUs, video, ...)
 local mem = m.devices[":maincpu"].spaces["program"]  -- main CPU's memory, readable byte by byte
 
+local function read_score(first_address)
+  local score = 0
+  for offset = 0, 5 do
+    score = score * 10 + mem:read_u8(first_address + offset)
+  end
+  return score * 10
+end
+
 -- Which emulated arcade controls Python can press. The position in this list is the bit number
 -- in the byte Python sends: 1st entry = bit 0 (value 1), 2nd = bit 1 (value 2), 3rd = 4, 4th = 8, 5th = 16.
 -- Each entry is {I/O port name, button name}. Names come from MAME's definition of the game
@@ -54,8 +62,16 @@ emu.register_frame_done(function()
     if f and (f.port:read() & f.mask) ~= (f.defvalue & f.mask) then read = read | (1 << (i - 1)) end
   end
 
-  -- Step 1: report to Python, one text line per frame.
-  sock:write(string.format("%d %d %d\n", frame, h, read))
+  -- Report the current game state to Python.
+  local score = read_score(0x4A13)
+local high_score = read_score(0x4A0D)
+local reserve_lives = mem:read_u8(0x4076)
+local state_byte = mem:read_u8(0x4037)
+
+sock:write(string.format(
+  "%d %d %d %d %d %d %d\n",
+  frame, h, read, score, high_score, reserve_lives, state_byte
+))
 
   -- Step 2: block (up to 5 s) until Python's one-byte reply arrives. This wait is what keeps the
   -- two programs in lockstep. The 5 s timeout only matters at startup, before Python has connected.

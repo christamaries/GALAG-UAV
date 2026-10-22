@@ -23,12 +23,31 @@ class CustomEnv(gym.Env):
         if not self.action_space.contains(action):
             raise ValueError(f"Invalid action: {action}")
 
+        previous_state = self.mame.get_game_state()
+
         self.mame.advance(ACTIONS[action], FRAMES_PER_STEP)
+        state = self.mame.get_game_state()
+
+        score_increase = max(0, state["score"] - previous_state["score"])
+        lives_lost = max(
+            0,
+            previous_state["reserve_lives"] - state["reserve_lives"],
+        )
+        
+        frames_elapsed = state["frame"] - previous_state["frame"]
+        terminated = state["game_over"]
+
+        if terminated:
+            reward -= 3
+
+        reward = score_increase / 500
+        reward += frames_elapsed * 0.001
+        reward -= lives_lost * 2
 
         # Observation, reward, and episode-ending logic will be added later.
         observation = np.zeros(1, dtype=np.float32)
-        return observation, 0.0, False, False, {
-            "frame": self.mame.frame,
+        return observation, reward, state["game_over"], False, {
+            **state,
             "input_readback": self.mame.input_readback,
         }
 

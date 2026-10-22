@@ -15,7 +15,7 @@ def main():
     model = PPO.load("ppo_galaga")
     observation, _ = env.reset()
     for _ in range(1_000):
-        action, _ = model.predict(observation)
+        action, _ = model.predict(observation, deterministic=True)
         observation, _, terminated, truncated, _ = env.step(action)
         if terminated or truncated:
             observation, _ = env.reset()

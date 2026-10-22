@@ -29,6 +29,7 @@ class MameBridge:
         self.reader = None
         self.frame = 0
         self.input_readback = 0
+        self._game_state = None
 
     def start(self):
         self.close()
@@ -78,7 +79,30 @@ class MameBridge:
         line = self.reader.readline()
         if not line:
             raise RuntimeError("MAME bridge disconnected")
-        self.frame, _, self.input_readback = map(int, line.split())
+
+        (
+        self.frame,
+        _,
+        self.input_readback,
+        score,
+        high_score,
+        reserve_lives,
+        state_byte,
+        ) = map(int, line.split())
+
+        self._game_state = {
+        "frame": self.frame,
+        "score": score,
+        "high_score": high_score,
+        "reserve_lives": reserve_lives,
+        "state_byte": state_byte,
+        "game_over": state_byte == 7 and reserve_lives == 0,
+        }
+
+    def get_game_state(self):
+        if self._game_state is None:
+            raise RuntimeError("No game state received yet")
+        return self._game_state.copy()
 
     def close(self):
         if self.reader is not None:
