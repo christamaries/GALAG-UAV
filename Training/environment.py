@@ -50,12 +50,14 @@ class CustomEnv(gym.Env):
         frames_elapsed = state["frame"] - previous_state["frame"]
         terminated = state["game_over"]
 
-        if terminated:
-            reward -= 3
-
         reward = score_increase / 500
         reward += frames_elapsed * 0.001
         reward -= lives_lost * 2
+
+        # Game-over penalty must come after `reward` is assigned above
+        # (applying it first raised UnboundLocalError on the final step).
+        if terminated:
+            reward -= 3
 
         # Observation, reward, and episode-ending logic will be added later.
         observation = np.zeros(1, dtype=np.float32)
