@@ -2,6 +2,7 @@ import gymnasium as gym
 import numpy as np
 
 from mame import ACTIONS, FRAMES_PER_STEP, MameBridge
+from pathlib import Path
 
 
 # Gymnasium custom environment API:
@@ -13,6 +14,8 @@ class CustomEnv(gym.Env):
         # Placeholder until game observations are implemented.
         self.observation_space = gym.spaces.Box(0, 1, shape=(1,), dtype=np.float32)
         self.mame = MameBridge()
+        self.screenshot_paths = []
+        self.screenshots = []
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -27,6 +30,16 @@ class CustomEnv(gym.Env):
 
         self.mame.advance(ACTIONS[action], FRAMES_PER_STEP)
         state = self.mame.get_game_state()
+
+        frame_numbers = range(state["frame"] - 3, state["frame"] + 1)
+        self.screenshot_paths = [
+            Path(f"/tmp/galaga88-frame-{(frame - 1) % 4}.png")
+            for frame in frame_numbers
+        ]
+
+        self.screenshots = [
+            path.read_bytes() for path in self.screenshot_paths
+        ]
 
         score_increase = max(0, state["score"] - previous_state["score"])
         lives_lost = max(

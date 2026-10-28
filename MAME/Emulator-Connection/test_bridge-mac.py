@@ -47,7 +47,7 @@ f = conn.makefile("r")  # lets us read MAME's messages one line at a time
 sent, prev_hash, changes, seen = 0, None, 0, set()
 for line in f:  # blocks until MAME finishes a frame and sends us its status line
     # Line format: "<frame number> <memory checksum> <button bitmask MAME's ports currently report>"
-    frame, h, read = map(int, line.split())
+    frame, h, read, score, high_score, reserve_lives, state_byte = map(int, line.split())
     # `read` is what MAME's emulated input port reports for the mask we sent last frame
     if sent: seen.add((sent, read))
     if prev_hash is not None and h != prev_hash: changes += 1

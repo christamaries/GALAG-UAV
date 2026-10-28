@@ -47,6 +47,12 @@ local buf, frame = "", 0   -- buf: bytes received from Python but not used yet; 
 -- MAME calls this function once at the end of every emulated video frame.
 emu.register_frame_done(function()
   frame = frame + 1
+  local slot = (frame - 1) % 4
+  local filename = string.format("/tmp/galaga88-frame-%d.png", slot)
+
+  local screen = assert(m.screens[":screen"], "Game screen not found")
+  local err = screen:snapshot(filename)
+  assert(err == nil, "Screenshot failed: " .. tostring(err))  
 
   -- OBSERVATION (stand-in): a cheap checksum of the first 1 KB of main-CPU memory. Python only
   -- uses it to confirm the game state is changing.
