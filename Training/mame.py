@@ -1,13 +1,20 @@
 import socket
 import subprocess
+import sys
 import time
 from pathlib import Path
 
 
 # Configure these paths for your system.
-MAME = "/opt/homebrew/bin/mame"
-ROMS = "/Users/jacobigielski/mame/roms"
-BRIDGE = Path(__file__).resolve().parent.parent / "MAME/Emulator-Connection/bridge.lua"
+ROOT = Path(__file__).resolve().parent.parent
+if sys.platform == "win32":
+    # Windows: MAME extracted into GALAG-UAV/MAME
+    MAME = str(ROOT / "MAME/mame.exe")
+    ROMS = str(ROOT / "MAME/roms")
+else:
+    MAME = "/opt/homebrew/bin/mame"
+    ROMS = "/Users/jacobigielski/mame/roms"
+BRIDGE = ROOT / "MAME/Emulator-Connection/bridge.lua"
 
 # These bits match MAP in bridge.lua.
 COIN, START, LEFT, RIGHT, FIRE = 1, 2, 4, 8, 16

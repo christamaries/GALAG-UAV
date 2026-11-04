@@ -2,17 +2,19 @@ from stable_baselines3 import PPO
 
 from environment import CustomEnv
 
+REWARD = "balanced"  # ["offense", "defense", "balanced", "greedy"]
+
 
 def main():
-    env = CustomEnv()
+    env = CustomEnv(reward=REWARD)
 
     # CnnPolicy is for image observations:
     # https://stable-baselines3.readthedocs.io/en/master/guide/custom_policy.html
     model = PPO("CnnPolicy", env, verbose=1)
     model.learn(total_timesteps=25_000)
-    model.save("ppo_galaga")
+    model.save(f"ppo_galaga_{REWARD}")  # one saved model per preset
 
-    model = PPO.load("ppo_galaga")
+    model = PPO.load(f"ppo_galaga_{REWARD}")
     observation, _ = env.reset()
     for _ in range(1_000):
         action, _ = model.predict(observation, deterministic=True)
