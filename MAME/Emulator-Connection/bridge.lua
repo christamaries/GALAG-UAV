@@ -48,7 +48,9 @@ local buf, frame = "", 0   -- buf: bytes received from Python but not used yet; 
 emu.register_frame_done(function()
   frame = frame + 1
   local slot = (frame - 1) % 4
-  local filename = string.format("/tmp/galaga88-frame-%d.png", slot)
+  -- Same lookup order as Python's tempfile.gettempdir(), so both sides agree on the folder.
+  local tmp = os.getenv("TMPDIR") or os.getenv("TEMP") or os.getenv("TMP") or "/tmp"
+  local filename = string.format("%s/galaga88-frame-%d.png", tmp, slot)
 
   local screen = assert(m.screens[":screen"], "Game screen not found")
   local err = screen:snapshot(filename)

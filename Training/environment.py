@@ -1,18 +1,26 @@
+import tempfile
+
 import gymnasium as gym
 import numpy as np
 
 from mame import ACTIONS, FRAMES_PER_STEP, MameBridge
 from pathlib import Path
+from reward_function import GalagaReward
+from preprocessing import FRAME_SIZE, STACK_SIZE, build_observation
 
 
 # Gymnasium custom environment API:
 # https://gymnasium.farama.org/introduction/create_custom_env/
 class CustomEnv(gym.Env):
-    def __init__(self):
+    # reward: "offense", "defense", "balanced" or "greedy" (see PRESETS in reward_function.py)
+    def __init__(self, reward="balanced"):
         super().__init__()
+        self.reward_fn = GalagaReward(reward)
         self.action_space = gym.spaces.Discrete(len(ACTIONS))
-        # Placeholder until game observations are implemented.
-        self.observation_space = gym.spaces.Box(0, 1, shape=(1,), dtype=np.float32)
+        # 4 stacked grayscale frames, 84x84, pixel values 0-255.
+        self.observation_space = gym.spaces.Box(
+            0, 255, shape=(STACK_SIZE, FRAME_SIZE, FRAME_SIZE), dtype=np.uint8
+        )
         self.mame = MameBridge()
         self.screenshot_paths = []
         self.screenshots = []
@@ -20,7 +28,19 @@ class CustomEnv(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.mame.start()
-        return np.zeros(1, dtype=np.float32), {}
+        self.reward_fn.reset()
+        observation = build_observation(self._read_screenshots())
+        return observation, {}
+
+    def _read_screenshots(self):
+        # The last 4 frames MAME saved (oldest first).
+        frame = self.mame.get_game_state()["frame"]
+        frame_numbers = range(frame - 3, frame + 1)
+        self.screenshot_paths = [
+            Path(tempfile.gettempdir()) / f"galaga88-frame-{(number - 1) % 4}.png"
+            for number in frame_numbers
+        ]
+        return [path.read_bytes() for path in self.screenshot_paths]
 
     def step(self, action):
         if not self.action_space.contains(action):
@@ -31,39 +51,16 @@ class CustomEnv(gym.Env):
         self.mame.advance(ACTIONS[action], FRAMES_PER_STEP)
         state = self.mame.get_game_state()
 
-        frame_numbers = range(state["frame"] - 3, state["frame"] + 1)
-        self.screenshot_paths = [
-            Path(f"/tmp/galaga88-frame-{(frame - 1) % 4}.png")
-            for frame in frame_numbers
-        ]
+        self.screenshots = self._read_screenshots()
 
-        self.screenshots = [
-            path.read_bytes() for path in self.screenshot_paths
-        ]
+        # Reward weights live in reward_function.py (old reward = "balanced" preset).
+        reward, reward_parts = self.reward_fn(previous_state, state)
 
-        score_increase = max(0, state["score"] - previous_state["score"])
-        lives_lost = max(
-            0,
-            previous_state["reserve_lives"] - state["reserve_lives"],
-        )
-        
-        frames_elapsed = state["frame"] - previous_state["frame"]
-        terminated = state["game_over"]
-
-        reward = score_increase / 500
-        reward += frames_elapsed * 0.001
-        reward -= lives_lost * 2
-
-        # Game-over penalty must come after `reward` is assigned above
-        # (applying it first raised UnboundLocalError on the final step).
-        if terminated:
-            reward -= 3
-
-        # Observation, reward, and episode-ending logic will be added later.
-        observation = np.zeros(1, dtype=np.float32)
+        observation = build_observation(self.screenshots)
         return observation, reward, state["game_over"], False, {
             **state,
             "input_readback": self.mame.input_readback,
+            "reward_parts": reward_parts,
         }
 
     def close(self):

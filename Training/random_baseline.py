@@ -10,10 +10,12 @@ import statistics
 from environment import CustomEnv
 
 EPISODES = 10  # change as needed
+REWARD = "balanced"  # ["offense", "defense", "balanced", "greedy"]
 
 
 def main():
-    env = CustomEnv()
+    env = CustomEnv(reward=REWARD)
+    print(f"reward preset: {REWARD}")
     rewards, scores, frames = [], [], []
     for ep in range(EPISODES):
         env.reset()  # launches MAME and plays coin/start, like the training loop
