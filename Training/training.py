@@ -1,28 +1,56 @@
+from pathlib import Path
+
 from stable_baselines3 import PPO
+from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.utils import FloatSchedule
 
 from environment import CustomEnv
 
-REWARD = "balanced"  # ["offense", "defense", "balanced", "greedy"]
+
+REWARD = "balanced"
+ROOT = Path(__file__).resolve().parent.parent
+
+SOURCE_MODEL = ROOT / "ppo_galaga_balanced_stabilized_v3.zip"
+FINAL_MODEL = ROOT / "ppo_galaga_balanced_stabilized_v4.zip"
+CHECKPOINT_DIR = ROOT / "checkpoints"
+
+ADDITIONAL_STEPS = 500_000
 
 
 def main():
     env = CustomEnv(reward=REWARD)
 
-    # CnnPolicy is for image observations:
-    # https://stable-baselines3.readthedocs.io/en/master/guide/custom_policy.html
-    model = PPO("CnnPolicy", env, verbose=1)
-    model.learn(total_timesteps=25_000)
-    model.save(f"ppo_galaga_{REWARD}")  # one saved model per preset
+    CHECKPOINT_DIR.mkdir(exist_ok=True)
+    checkpoint_callback = CheckpointCallback(
+        save_freq=50_000,
+        save_path=str(CHECKPOINT_DIR),
+        name_prefix="ppo_galaga_stabilized",
+    )
 
-    model = PPO.load(f"ppo_galaga_{REWARD}")
-    observation, _ = env.reset()
-    for _ in range(1_000):
-        action, _ = model.predict(observation, deterministic=True)
-        observation, _, terminated, truncated, _ = env.step(action)
-        if terminated or truncated:
-            observation, _ = env.reset()
+    model = PPO.load(
+        str(SOURCE_MODEL),
+        env=env,
+        verbose=1,
+        device="cpu",
+    )
 
-    env.close()
+    model.learning_rate = 3e-5
+    model.lr_schedule = FloatSchedule(3e-5)
+    model.clip_range = FloatSchedule(0.1)
+    model.n_epochs = 3
+    model.target_kl = 0.03
+
+    print("Continuing from step:", model.num_timesteps)
+
+    try:
+        model.learn(
+            total_timesteps=ADDITIONAL_STEPS,
+            reset_num_timesteps=False,
+            callback=checkpoint_callback,
+        )
+        model.save(str(FINAL_MODEL))
+    finally:
+        env.close()
 
 
 if __name__ == "__main__":

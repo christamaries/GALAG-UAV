@@ -7,13 +7,13 @@ from pathlib import Path
 
 # Configure these paths for your system.
 ROOT = Path(__file__).resolve().parent.parent
+
 if sys.platform == "win32":
-    # Windows: MAME extracted into GALAG-UAV/MAME
     MAME = str(ROOT / "MAME/mame.exe")
-    ROMS = str(ROOT / "MAME/roms")
 else:
     MAME = "/opt/homebrew/bin/mame"
-    ROMS = "/Users/jacobigielski/mame/roms"
+
+ROMS = str(ROOT / "MAME/roms")
 BRIDGE = ROOT / "MAME/Emulator-Connection/bridge.lua"
 
 # These bits match MAP in bridge.lua.
@@ -60,6 +60,9 @@ class MameBridge:
                 raise TimeoutError("MAME did not open the bridge socket on port 57321")
 
             self.reader = self.conn.makefile("r")
+
+            # Initial no-op action releases MAME's first-frame wait.
+            self.conn.sendall(bytes([0]))
             self._read_frame()
 
             # The existing bridge test inserts a coin at frame 600 and starts at 700.

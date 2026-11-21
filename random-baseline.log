@@ -1,0 +1,14 @@
+reward preset: balanced
+episode 0: reward=-4.00 score=1640 frames=3040
+episode 1: reward=-1.81 score=2790 frames=3132
+episode 2: reward=-2.59 score=1950 frames=3636
+episode 3: reward=-2.55 score=2410 frames=2748
+episode 4: reward=1.66 score=4240 frames=3508
+episode 5: reward=-1.25 score=2840 frames=3196
+episode 6: reward=-6.29 score=630 frames=2576
+episode 7: reward=0.54 score=3670 frames=3524
+episode 8: reward=-5.91 score=760 frames=2692
+episode 9: reward=-6.01 score=710 frames=2696
+reward: mean=-2.8 stdev=2.6
+score: mean=2164.0 stdev=1193.6
+frames: mean=3074.8 stdev=370.0

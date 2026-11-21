@@ -54,7 +54,7 @@ emu.register_frame_done(function()
 
   local screen = assert(m.screens[":screen"], "Game screen not found")
   local err = screen:snapshot(filename)
-  assert(err == nil, "Screenshot failed: " .. tostring(err))  
+  assert(err == nil, "Screenshot failed: " .. tostring(err))
 
   -- OBSERVATION (stand-in): a cheap checksum of the first 1 KB of main-CPU memory. Python only
   -- uses it to confirm the game state is changing.
@@ -83,8 +83,13 @@ sock:write(string.format(
 
   -- Step 2: block (up to 5 s) until Python's one-byte reply arrives. This wait is what keeps the
   -- two programs in lockstep. The 5 s timeout only matters at startup, before Python has connected.
-  local t = os.clock()
-  while #buf < 1 and os.clock() - t < 5 do buf = buf .. sock:read(1) end
+  while #buf < 1 do
+    local incoming = sock:read(1)
+    if incoming then
+      buf = buf .. incoming
+    end
+  end
+  
   if #buf < 1 then return end   -- no reply: leave inputs as they were and carry on
   local mask = buf:byte(1); buf = buf:sub(2)
 
